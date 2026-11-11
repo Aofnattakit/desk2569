@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>การสำรวจจำนวนโต๊ะ และเก้าอี้นักเรียน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF2EF; --surface:#FFFFFF; --ink:#1B2725; --muted:#5B6A66; --line:#D2DCD7;
+  --board:#1F5E52; --board-2:#2A7464; --board-ink:#F2F7F4;
+  --desk:#1F7A68; --desk-soft:#DCEFE9; --chair:#D99A12; --chair-soft:#FBEFCF; --chair-ink:#3A2A00;
+  --bad:#B8402B; --bad-soft:#F8E2DC; --ok:#2E7D5B; --ok-soft:#DDEFE5; --field:#F6F9F7;
+  --paper:#FFFFFF; --paper-ink:#151515; --paper-line:#9AA5A1;
+  color-scheme:light; box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111816; --surface:#1A2320; --ink:#E5EDE9; --muted:#9AABA6; --line:#2C3A36;
+    --board:#163F37; --board-2:#1F5247; --board-ink:#E6F2EC;
+    --desk:#55BFA6; --desk-soft:#173129; --chair:#EDB53A; --chair-soft:#3A2E12; --chair-ink:#2A1E00;
+    --bad:#F08A72; --bad-soft:#3B231D; --ok:#6CC79C; --ok-soft:#1B3328; --field:#141C1A;
+    --paper:#FFFFFF; --paper-ink:#151515; --paper-line:#9AA5A1;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#1A2320; --ink:#E5EDE9; --muted:#9AABA6; --line:#2C3A36;
+  --board:#163F37; --board-2:#1F5247; --board-ink:#E6F2EC;
+  --desk:#55BFA6; --desk-soft:#173129; --chair:#EDB53A; --chair-soft:#3A2E12; --chair-ink:#2A1E00;
+  --bad:#F08A72; --bad-soft:#3B231D; --ok:#6CC79C; --ok-soft:#1B3328; --field:#141C1A;
+  --paper:#FFFFFF; --paper-ink:#151515; --paper-line:#9AA5A1;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Anuphan","Noto Sans Thai",system-ui,sans-serif;font-size:16px;line-height:1.6}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--board)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--chair);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto}
+
+/* header */
+header.board{background:var(--board);color:var(--board-ink);padding:26px 20px 0}
+.title-row{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+header h1{margin:0;font-size:clamp(1.45rem,4.2vw,2.15rem);font-weight:700;line-height:1.25;max-width:22ch}
+header .school{margin:6px 0 0;font-size:1.02rem;opacity:.9}
+header .org{margin:2px 0 0;font-size:.92rem;opacity:.8}
+.role{display:inline-block;border:1px solid var(--board-ink);border-radius:999px;padding:3px 12px;font-size:.88rem;white-space:nowrap;opacity:.9}
+.term{display:inline-block;background:var(--chair);color:var(--chair-ink);font-weight:600;border-radius:999px;padding:4px 14px;font-size:.92rem;white-space:nowrap}
+.head-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.theme-switch{display:inline-flex;align-items:center;gap:2px;background:var(--board-2);border-radius:999px;padding:4px;flex-wrap:wrap}
+.theme-switch .ts-label{padding:0 8px 0 10px;font-size:.85rem;opacity:.85}
+.theme-switch button{border:0;background:transparent;color:var(--board-ink);border-radius:999px;padding:5px 12px;cursor:pointer;font-size:.92rem;white-space:nowrap}
+.theme-switch button[aria-checked="true"]{background:var(--board-ink);color:var(--board);font-weight:600}
+.editbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--chair-soft);border:2px solid var(--chair);border-radius:12px;padding:12px 14px;margin-bottom:18px}
+.editbar small{color:var(--muted)}
+.editbar .btn{padding:8px 14px;font-size:.95rem}
+.btn.danger{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+.edit-btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:4px 10px;cursor:pointer;white-space:nowrap;font-size:.9rem}
+.edit-btn:hover{border-color:var(--board-2)}
+.tally{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:20px 0}
+.tally div{background:var(--board-2);border-radius:12px;padding:10px 14px}
+.tally b{display:block;font-size:1.7rem;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.tally span{font-size:.85rem;opacity:.85}
+.tally .warn b{color:var(--chair)}
+@media (max-width:620px){.tally{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tabbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--board);padding:0 20px}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding-top:6px}
+nav.tabs button{background:transparent;border:0;color:var(--board-ink);opacity:.78;padding:10px 14px;border-radius:12px 12px 0 0;cursor:pointer;white-space:nowrap;font-weight:500}
+nav.tabs button[aria-selected="true"]{background:var(--bg);color:var(--ink);opacity:1;font-weight:600}
+
+main{padding:22px 20px 70px}
+section.tab[hidden]{display:none}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px}
+h2{font-size:1.3rem;margin:0 0 4px;font-weight:600}
+h3{font-size:1.08rem;margin:28px 0 10px;font-weight:600}
+.lead{color:var(--muted);margin:0 0 18px}
+
+/* steps */
+ol.steps{list-style:none;margin:0 0 18px;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+ol.steps li{border-top:5px solid var(--line);padding-top:8px;font-size:.92rem;color:var(--muted)}
+ol.steps li b{display:block;color:var(--ink);font-weight:600}
+ol.steps li.on{border-color:var(--board-2)} ol.steps li.on b{color:var(--board-2)}
+ol.steps li.done{border-color:var(--desk)}
+:root[data-theme="dark"] ol.steps li.on b{color:var(--desk)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) ol.steps li.on b{color:var(--desk)}}
+.step[hidden]{display:none}
+
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+label.f{display:flex;flex-direction:column;gap:5px;font-weight:500}
+label.f small{font-weight:400;color:var(--muted)}
+input,select,textarea{background:var(--field);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%}
+select{appearance:auto}
+.note{background:var(--chair-soft);border-radius:10px;padding:10px 14px;margin:0 0 16px}
+.notice{background:var(--bad-soft);border-radius:10px;padding:10px 14px;margin-bottom:16px}
+
+/* counters */
+.counters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:640px){.counters{grid-template-columns:1fr}}
+.thing{border-radius:16px;padding:18px;border:1px solid var(--line)}
+.thing.desk{background:var(--desk-soft)} .thing.chair{background:var(--chair-soft)}
+.thing header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.thing header svg{width:52px;height:52px;flex:none}
+.thing.desk header svg{color:var(--desk)} .thing.chair header svg{color:var(--chair)}
+.thing header b{font-size:1.15rem}
+.count-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0}
+.count-row + .count-row{border-top:1px dashed var(--line)}
+.count-row .lbl{font-weight:500}
+.count-row .lbl.bad{color:var(--bad)}
+.count-row .lbl small{display:block;font-weight:400;font-size:.85rem;color:var(--muted)}
+.stepper{display:grid;grid-template-columns:46px 76px 46px;gap:6px;align-items:center}
+.stepper button{height:46px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:1.5rem;line-height:1;cursor:pointer;font-weight:600}
+.stepper button:active{transform:scale(.94)}
+.stepper input{text-align:center;font-size:1.35rem;font-weight:700;padding:6px 4px;background:var(--surface);font-variant-numeric:tabular-nums}
+.stepper.bad input{color:var(--bad);border-color:var(--bad)}
+
+/* items */
+.items-group h4{display:flex;align-items:center;gap:10px;margin:8px 0 10px;font-size:1.05rem}
+.items-group h4 svg{width:30px;height:30px}
+.items-group.desk h4 svg{color:var(--desk)} .items-group.chair h4 svg{color:var(--chair)}
+.item{border:1px solid var(--line);border-left:6px solid var(--desk);border-radius:12px;padding:14px;margin-bottom:10px;background:var(--surface)}
+.items-group.chair .item{border-left-color:var(--chair)}
+.item.missing{border-color:var(--bad);border-left-color:var(--bad)}
+.item b{display:block;margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.chips button{border:1px solid var(--line);background:var(--field);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:.95rem}
+.chips button[aria-pressed="true"]{background:var(--board);color:var(--board-ink);border-color:var(--board)}
+.item input{padding:9px 12px}
+
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;align-items:center}
+.btn{border:0;border-radius:12px;padding:12px 22px;font-weight:600;cursor:pointer;font-size:1rem}
+.btn.primary{background:var(--board);color:var(--board-ink)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.spacer{flex:1}
+.msg{font-size:.95rem} .msg.err{color:var(--bad)} .msg.ok{color:var(--ok)}
+
+.done-box{text-align:center;padding:24px 10px}
+.done-box .big{font-size:3rem;line-height:1}
+.done-box h2{margin-top:10px}
+.done-box .sum{display:inline-grid;grid-template-columns:auto auto;gap:4px 18px;text-align:left;margin:14px 0;background:var(--field);padding:14px 18px;border-radius:12px}
+
+/* summary */
+.switch{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.switch button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 16px;cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--chair);color:var(--chair-ink);border-color:var(--chair);font-weight:600}
+.cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:left;cursor:pointer;width:100%}
+.card[aria-expanded="true"]{border-color:var(--board-2);box-shadow:0 0 0 2px var(--board-2) inset}
+.card h4{margin:0 0 2px;font-size:1.05rem}
+.card .sub{color:var(--muted);font-size:.88rem}
+.card .nums{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 10px}
+.card .nums div{border-radius:10px;padding:8px 10px}
+.card .nums .d{background:var(--desk-soft)} .card .nums .c{background:var(--chair-soft)}
+.card .nums b{font-size:1.3rem;display:block;line-height:1.2;font-variant-numeric:tabular-nums}
+.card .nums small{color:var(--muted)}
+.card .nums em{font-style:normal;color:var(--bad);font-weight:600;font-size:.9rem}
+.card-detail{grid-column:1/-1}
+.bar{height:8px;border-radius:4px;background:var(--ok-soft);overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%;background:var(--bad)}
+.pct{font-size:.85rem;color:var(--muted)}
+.big-stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.big-stats .thing b.n{font-size:2rem;font-weight:700;display:block;line-height:1.1}
+
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-variant-numeric:tabular-nums}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-weight:600;font-size:.9rem;color:var(--muted);background:var(--field)}
+td.n,th.n{text-align:right}
+tr:last-child td{border-bottom:0}
+tr.total td{font-weight:700;background:var(--field)}
+.bad{color:var(--bad);font-weight:600}
+tbody tr.click{cursor:pointer} tbody tr.click:hover{background:var(--field)}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.filters select{width:auto;min-width:160px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.85rem;font-weight:500;white-space:nowrap}
+.st-wait{background:var(--bad-soft);color:var(--bad)}
+.st-sent{background:var(--chair-soft);color:var(--ink)}
+.st-done{background:var(--ok-soft);color:var(--ok)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.dot.wait{background:var(--bad)} .dot.sent{background:var(--chair)} .dot.ok{background:var(--ok)}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+.loading{color:var(--muted);padding:20px 0}
+.kind-tag{font-size:.85rem;font-weight:600}
+.kind-tag.desk{color:var(--desk)} .kind-tag.chair{color:var(--chair)}
+
+/* report (paper) */
+.report-tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.paper{background:var(--paper);color:var(--paper-ink);border-radius:6px;padding:40px 44px;box-shadow:0 1px 3px rgba(0,0,0,.18);font-family:"Sarabun","Anuphan",serif;font-size:15px;line-height:1.55;max-width:820px;margin:0 auto;overflow-x:auto}
+.paper h1{font-size:1.35rem;text-align:center;margin:0;line-height:1.4}
+.paper .meta{text-align:center;margin:4px 0 22px}
+.paper h2{font-size:1.08rem;margin:22px 0 8px}
+.paper table{min-width:0;font-size:.95rem}
+.paper th,.paper td{border:1px solid var(--paper-line);padding:5px 8px;color:var(--paper-ink);background:transparent}
+.paper th{background:#EEF2F0;color:var(--paper-ink)}
+.paper tr.total td{background:#F4F6F5;font-weight:700}
+.paper .sign{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:46px;text-align:center}
+.paper .sign p{margin:0}
+.mine-list{display:grid;gap:10px}
+.mine-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:center}
+.mine-card .info{flex:1;min-width:0}
+.mine-card b{display:block;font-size:1.05rem}
+.mine-card small,.mine-card .info>span{color:var(--muted)}
+.room-list{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.room-list li{padding:10px 14px;border-bottom:1px solid var(--line)}
+.room-list li:last-child{border-bottom:0}
+.room-list li b{display:block}
+.room-list li>span{font-size:.92rem;color:var(--muted)}
+[hidden]{display:none!important}
+.sync-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.btn.small{padding:7px 14px;font-size:.92rem}
+a.btn{text-decoration:none;display:inline-block}
+.appfoot{max-width:1040px;margin:0 auto;padding:0 20px 40px;display:flex;gap:16px;flex-wrap:wrap}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:6px 0;font-size:.92rem}
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);padding:22px;width:min(92vw,380px)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h3{margin:0 0 14px}
+/* guide & hints */
+.guide{background:var(--desk-soft);border:1px solid var(--line);border-radius:12px;margin-bottom:18px}
+.guide summary{cursor:pointer;padding:12px 14px;font-weight:600;list-style-position:inside}
+.guide-body{padding:0 16px 12px}
+.guide .ex{margin:0 0 8px;background:var(--surface);border-radius:8px;padding:8px 12px}
+.guide ol{margin:0;padding-left:1.3em}
+.guide li{margin:4px 0}
+code{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:0 6px;font-family:inherit;font-weight:700}
+.hint{background:var(--field);border:1px dashed var(--line);border-radius:10px;padding:10px 14px;margin:0 0 16px}
+.hint p{margin:2px 0}
+/* dashboard */
+.dash-top{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;gap:14px;align-items:center}
+.kpi.desk{border-top:6px solid var(--desk)} .kpi.chair{border-top:6px solid var(--chair)} .kpi.repair{border-top:6px solid var(--board-2);display:block}
+.kpi h4{margin:0 0 2px;font-size:1rem;display:flex;align-items:center;gap:6px}
+.kpi h4 svg{width:26px;height:26px}
+.kpi.desk h4 svg{color:var(--desk)} .kpi.chair h4 svg{color:var(--chair)}
+.kpi .kpi-n{font-size:1.9rem;font-weight:700;line-height:1.15;display:block;font-variant-numeric:tabular-nums}
+.kpi p{margin:2px 0;font-size:.95rem}
+.donut{width:118px;height:118px;flex:none}
+.donut .d-big{fill:var(--ink);font-size:24px;font-weight:700;font-family:inherit}
+.donut .d-sm{fill:var(--muted);font-size:11px;font-family:inherit}
+.prog{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--line);margin:12px 0 10px}
+.prog i{display:block;height:100%}
+.legend{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:.9rem}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.dash-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.chart-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.chart-card h4{margin:0 0 4px;font-size:1.05rem}
+.chart-card .legend{margin-bottom:10px;color:var(--muted)}
+.hb-row{display:grid;grid-template-columns:minmax(80px,140px) 1fr auto;gap:10px;align-items:center;padding:5px 0}
+.hb-label{font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-track{display:flex;height:18px;border-radius:5px;background:var(--field);overflow:hidden}
+.hb-track i{display:block;height:100%}
+.hb-val{font-size:.9rem;font-variant-numeric:tabular-nums;text-align:right;min-width:72px}
+.hb-val small{display:block;color:var(--bad);font-size:.78rem;line-height:1.1}
+.hb-none{color:var(--muted);font-size:.85rem}
+.c-ok{background:var(--ok)} .c-bad{background:var(--bad)} .c-sent{background:var(--chair)} .c-desk{background:var(--desk)} .c-chair{background:var(--chair)}
+.detail-h{margin-top:30px}
+/* report tools */
+.report-tools{display:flex;flex-direction:column;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.rt-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.rt-row label.f{min-width:220px;flex:1}
+.chk{display:flex;gap:8px;align-items:center}
+.chk input{width:auto}
+.paper .brk{break-before:page;margin-top:44px;padding-top:34px;border-top:2px dashed var(--paper-line)}
+.paper .pb-row{display:grid;grid-template-columns:150px 1fr 130px;gap:8px;align-items:center;margin:4px 0}
+.paper .pb-track{display:flex;height:14px;background:#EEF2F0}
+.paper .pb-track i{display:block;height:100%}
+.paper .pb-legend{font-size:.9rem;margin:4px 0 8px}
+.paper .pb-legend i{display:inline-block;width:12px;height:12px;margin:0 4px -1px 10px}
+.paper *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media (max-width:640px){
+  header.board{padding:18px 16px 0}
+  header h1{font-size:1.3rem}
+  .tally{gap:8px;margin:14px 0}
+  .tally div{padding:8px 10px}
+  .tally b{font-size:1.35rem}
+  .tabbar{padding:0 10px}
+  nav.tabs button{padding:9px 12px;font-size:.95rem}
+  main{padding:16px 12px 40px}
+  .panel{padding:16px;border-radius:14px}
+  .count-row{flex-direction:column;align-items:stretch;gap:6px}
+  .stepper{grid-template-columns:58px 1fr 58px}
+  .stepper button{height:58px;font-size:1.8rem}
+  .stepper input{font-size:1.6rem;height:58px}
+  .chips button{padding:10px 16px;min-height:44px;font-size:1rem}
+  .step .actions{position:sticky;bottom:0;z-index:4;background:var(--surface);margin:18px -16px -16px;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);border-radius:0 0 14px 14px;flex-wrap:nowrap}
+  .step .actions .msg{position:absolute;left:16px;right:16px;bottom:100%;background:var(--surface);padding:6px 0}
+  .step .actions .msg:empty{display:none}
+  .step .actions .btn{flex:1;padding:14px 12px}
+  .step .actions .spacer{display:none}
+  .sum-table{display:none}
+  .kpi{padding:14px}
+  .donut{width:96px;height:96px}
+  .hb-row{grid-template-columns:76px 1fr auto;gap:8px}
+  .report-tools .btn{flex:1}
+  .theme-switch .ts-label{display:none}
+  .editbar .btn{flex:1}
+}
+@media print{
+  @page{size:A4;margin:14mm}
+  body{background:#fff}
+  body::before,header.board,.tabbar,.no-print,section.tab:not(#tab-report){display:none!important}
+  main{padding:0}
+  #tab-report{display:block!important}
+  .paper{box-shadow:none;padding:0;max-width:none;border-radius:0}
+  .paper h2{break-after:avoid} .paper tr{break-inside:avoid}
+  .paper .brk{border-top:0;margin-top:0;padding-top:0}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ico-desk" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="18" width="52" height="8" rx="2" fill="currentColor" fill-opacity=".2"/><path d="M12 26v28M52 26v28M18 26v10h28V26"/></g></symbol>
+  <symbol id="ico-chair" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="8" width="28" height="18" rx="3" fill="currentColor" fill-opacity=".2"/><rect x="14" y="32" width="36" height="7" rx="2" fill="currentColor" fill-opacity=".2"/><path d="M22 26v6M42 26v6M18 39v17M46 39v17"/></g></symbol>
+</svg>
+
+<header class="board">
+  <div class="wrap">
+    <div class="title-row">
+      <div>
+        <h1>การสำรวจจำนวนโต๊ะ และเก้าอี้นักเรียน</h1>
+        <p class="school">โรงเรียนบรรหารแจ่มใสวิทยา 1</p>
+        <p class="org">จัดทำโดย กลุ่มงานบริหารวิชาการ และกลุ่มงานบริหารทั่วไป</p>
+      </div>
+      <div class="head-right">
+        <span class="term">ภาคเรียนที่ 2 ปีการศึกษา 2569</span>
+        <span class="role" id="roleBadge">👤 ครูผู้กรอก</span>
+        <div class="theme-switch" role="radiogroup" aria-label="โหมดหน้าจอ">
+          <span class="ts-label">โหมดหน้าจอ</span>
+          <button type="button" role="radio" data-theme-opt="light">☀️ สว่าง</button>
+          <button type="button" role="radio" data-theme-opt="dark">🌙 มืด</button>
+          <button type="button" role="radio" data-theme-opt="auto">🖥️ อัตโนมัติ</button>
+        </div>
+      </div>
+    </div>
+    <div class="tally" aria-live="polite">
+      <div><b id="tRooms">–</b><span>ห้องที่สำรวจแล้ว</span></div>
+      <div><b id="tDesks">–</b><span>โต๊ะทั้งหมด</span></div>
+      <div><b id="tChairs">–</b><span>เก้าอี้ทั้งหมด</span></div>
+      <div class="warn"><b id="tPending">–</b><span>ตัวที่ยังรอซ่อม</span></div>
+    </div>
+  </div>
+</header>
+<div class="tabbar">
+  <nav class="tabs wrap" role="tablist">
+    <button role="tab" data-tab="form" aria-selected="true">📝 บันทึกข้อมูล</button>
+    <button role="tab" data-tab="edit" aria-selected="false">✏️ แก้ไขข้อมูลห้อง</button>
+    <button role="tab" data-tab="summary" aria-selected="false">📊 สรุปภาพรวม</button>
+    <button role="tab" data-tab="repair" aria-selected="false" class="admin-only" hidden>🔧 รายการส่งซ่อม</button>
+    <button role="tab" data-tab="rooms" aria-selected="false" class="admin-only" hidden>🏫 ห้องทั้งหมด</button>
+    <button role="tab" data-tab="report" aria-selected="false" class="admin-only" hidden>🖨 รายงาน</button>
+  </nav>
+</div>
+
+<main class="wrap">
+<!-- ============ FORM ============ -->
+<section class="tab" id="tab-form">
+  <div class="panel">
+    <div id="roNotice" class="notice" hidden>ยังไม่ได้เชื่อมต่อ Google Sheet ให้ใส่ URL ของ Apps Script ที่บรรทัด API_URL ในไฟล์ index.html</div>
+    <div id="editBar" class="editbar" hidden>
+      <span>✏️ <b id="editText">กำลังแก้ไข</b><br><small>แก้ได้ทุกช่อง รวมถึงอาคารและเลขห้อง</small></span>
+      <span class="spacer"></span>
+      <button type="button" class="btn danger" id="btnDelete" hidden>🗑 ลบห้องนี้</button>
+      <button type="button" class="btn ghost" id="btnCancelEdit">ยกเลิกการแก้ไข</button>
+    </div>
+    <ol class="steps" id="stepsBar">
+      <li data-s="1"><b>ขั้นที่ 1</b>เลือกห้อง</li>
+      <li data-s="2"><b>ขั้นที่ 2</b>นับจำนวน</li>
+      <li data-s="3"><b>ขั้นที่ 3</b>ระบุอาการเสีย</li>
+    </ol>
+
+    <!-- step 1 -->
+    <div class="step" id="step1">
+      <h2>ห้องไหนที่กำลังสำรวจ</h2>
+      <p class="lead">ถ้าห้องนี้เคยบันทึกไว้แล้ว ข้อมูลเดิมจะขึ้นมาให้แก้ไขในขั้นถัดไป</p>
+      <div class="grid">
+        <label class="f">อาคารเรียน <small>เลือกอาคารที่ห้องนี้ตั้งอยู่</small>
+          <select id="fBuilding"></select>
+        </label>
+        <label class="f">ห้องเรียน <small>กรอกเฉพาะตัวเลขเลขห้อง</small>
+          <input id="fRoom" placeholder="เลขห้อง" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off">
+        </label>
+        <label class="f">กลุ่มสาระการเรียนรู้ที่ดูแล <small>กลุ่มสาระที่รับผิดชอบดูแลห้องนี้</small>
+          <select id="fGroup"></select>
+        </label>
+        <label class="f">ผู้สำรวจ <small>ชื่อ–นามสกุลผู้กรอก พิมพ์แบบเดียวกันทุกครั้ง</small>
+          <input id="fReporter" placeholder="ชื่อ–นามสกุล" autocomplete="name">
+        </label>
+      </div>
+      <div class="actions"><span class="spacer"></span><span class="msg" id="msg1" role="status"></span><button class="btn primary" id="next1">ถัดไป: นับจำนวน</button></div>
+    </div>
+
+    <!-- step 2 -->
+    <div class="step" id="step2" hidden>
+      <h2 id="s2Title">นับจำนวนโต๊ะและเก้าอี้</h2>
+      <p class="note" id="s2Note" hidden></p>
+      <div class="counters">
+        <div class="thing desk">
+          <header><svg><use href="#ico-desk"/></svg><b>โต๊ะนักเรียน</b></header>
+          <div class="count-row"><span class="lbl">ทั้งหมดในห้อง<small>นับรวมตัวที่ชำรุดด้วย</small></span><div class="stepper" data-key="desks"></div></div>
+          <div class="count-row"><span class="lbl bad">ชำรุด<small>ตัวที่ใช้งานไม่ได้ ต้องส่งซ่อม</small></span><div class="stepper bad" data-key="desksB"></div></div>
+        </div>
+        <div class="thing chair">
+          <header><svg><use href="#ico-chair"/></svg><b>เก้าอี้นักเรียน</b></header>
+          <div class="count-row"><span class="lbl">ทั้งหมดในห้อง<small>นับรวมตัวที่ชำรุดด้วย</small></span><div class="stepper" data-key="chairs"></div></div>
+          <div class="count-row"><span class="lbl bad">ชำรุด<small>ตัวที่ใช้งานไม่ได้ ต้องส่งซ่อม</small></span><div class="stepper bad" data-key="chairsB"></div></div>
+        </div>
+      </div>
+      <div class="actions"><button class="btn ghost" id="back2">ย้อนกลับ</button><span class="spacer"></span><span class="msg" id="msg2" role="status"></span><button class="btn primary" id="next2">ถัดไป</button></div>
+    </div>
+
+    <!-- step 3 -->
+    <div class="step" id="step3" hidden>
+      <h2>ระบุอาการเสียทีละตัว</h2>
+      <p class="lead">เลือกอาการให้ครบทุกตัว</p>
+      <div id="itemsArea"></div>
+      <div class="actions"><button class="btn ghost" id="back3">ย้อนกลับ</button><span class="spacer"></span><span class="msg" id="msg3" role="status"></span><button class="btn primary" id="save3">บันทึกข้อมูลห้อง</button></div>
+    </div>
+
+    <!-- done -->
+    <div class="step" id="stepDone" hidden>
+      <div class="done-box">
+        <div class="big">✅</div>
+        <h2 id="doneTitle">บันทึกแล้ว</h2>
+        <div class="sum" id="doneSum"></div>
+        <div class="actions" style="justify-content:center">
+          <button class="btn ghost" id="editAgain">แก้ไขห้องนี้</button>
+          <button class="btn primary" id="nextRoom">บันทึกห้องถัดไป</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SUMMARY ============ -->
+<section class="tab" id="tab-summary" hidden>
+  <div class="sync-row"><span class="pct" id="syncInfo"></span><button type="button" class="btn ghost small" id="btnRefresh">🔄 รีเฟรชข้อมูล</button></div>
+  <div id="dashBody"><p class="loading">กำลังโหลดข้อมูล…</p></div>
+  <h3 class="detail-h">ดูรายละเอียดรายห้อง</h3>
+  <div class="switch" role="group" aria-label="มุมมองรายละเอียด">
+    <button data-sum="group" aria-pressed="true">แยกกลุ่มสาระ</button>
+    <button data-sum="building" aria-pressed="false">แยกอาคารเรียน</button>
+  </div>
+  <div id="sumBody"></div>
+</section>
+
+<!-- ============ REPAIR ============ -->
+<section class="tab" id="tab-repair" hidden>
+  <h2>รายการส่งซ่อม</h2>
+  <p class="lead">แสดงทีละตัว เปลี่ยนสถานะได้ในคอลัมน์ขวาสุด</p>
+  <div class="filters">
+    <select id="rpB" aria-label="กรองอาคาร"></select>
+    <select id="rpK" aria-label="กรองประเภท"><option value="">โต๊ะและเก้าอี้</option><option value="desk">เฉพาะโต๊ะ</option><option value="chair">เฉพาะเก้าอี้</option></select>
+    <select id="rpS" aria-label="กรองสถานะ"><option value="">ทุกสถานะ</option><option value="wait">รอส่งซ่อม</option><option value="sent">ส่งซ่อมแล้ว</option><option value="done">ซ่อมเสร็จ</option></select>
+  </div>
+  <div id="repairBody"></div>
+  <div class="actions"><a class="btn ghost sheet-link" target="_blank" rel="noopener">📗 เปิดข้อมูลใน Google Sheet</a></div>
+</section>
+
+<!-- ============ ROOMS ============ -->
+<!-- ============ EDIT ============ -->
+<section class="tab" id="tab-edit" hidden>
+  <h2>แก้ไขข้อมูลห้อง</h2>
+  <p class="lead">เลือกอาคาร แล้วแตะ “แก้ไข” ที่ห้องที่ต้องการ</p>
+  <div class="filters"><select id="edB" aria-label="เลือกอาคาร"></select></div>
+  <div id="editBody"></div>
+</section>
+
+<section class="tab" id="tab-rooms" hidden>
+  <h2>ห้องที่สำรวจแล้ว</h2>
+  <p class="lead"><span class="dot wait"></span>มีของรอส่งซ่อม <span class="dot sent" style="margin-left:12px"></span>ส่งซ่อมแล้ว <span class="dot ok" style="margin-left:12px"></span>ไม่มีของรอซ่อม · แตะแถวเพื่อแก้ไข</p>
+  <div class="filters">
+    <select id="rmB" aria-label="กรองอาคาร"></select>
+    <select id="rmG" aria-label="กรองกลุ่มสาระ"></select>
+  </div>
+  <div id="roomsBody"></div>
+  <div class="actions"><a class="btn ghost sheet-link" target="_blank" rel="noopener">📗 เปิดข้อมูลใน Google Sheet</a></div>
+</section>
+
+<!-- ============ REPORT ============ -->
+<section class="tab" id="tab-report" hidden>
+  <div class="report-tools no-print">
+    <div class="rt-row">
+      <label class="f">รูปแบบรายงาน
+        <select id="repType">
+          <option value="overview">ภาพรวมทั้งโรงเรียน</option>
+          <option value="building">แยกรายอาคาร</option>
+          <option value="group">แยกรายกลุ่มสาระ</option>
+        </select>
+      </label>
+      <label class="f" id="repWhichWrap" hidden><span id="repWhichLbl">อาคาร</span>
+        <select id="repWhich"></select>
+      </label>
+    </div>
+    <label class="chk"><input type="checkbox" id="rpOnlyPending" checked> รายการซ่อมแสดงเฉพาะที่ยังไม่เสร็จ</label>
+    <div class="rt-row">
+      <button class="btn primary" id="btnPrint">🖨 พิมพ์ / บันทึกเป็น PDF</button>
+      <button class="btn ghost" id="btnDlReport">ดาวน์โหลดไฟล์รายงาน</button>
+      <span class="msg" id="repMsg"></span>
+    </div>
+  </div>
+  <div class="paper" id="reportDoc"></div>
+</section>
+</main>
+<footer class="appfoot no-print">
+  <button type="button" class="linkbtn" id="btnAdmin">🔐 เข้าสู่ระบบแอดมิน</button>
+  <button type="button" class="linkbtn" id="btnLogout" hidden>ออกจากระบบแอดมิน</button>
+</footer>
+<dialog id="dlgAdmin" aria-labelledby="dlgTitle">
+  <form id="adminForm">
+    <h3 id="dlgTitle">เข้าสู่ระบบแอดมิน</h3>
+    <label class="f">รหัสผ่าน<input type="password" id="adminPw" autocomplete="current-password"></label>
+    <p class="msg" id="adminMsg" role="status"></p>
+    <div class="actions"><button type="button" class="btn ghost" id="adminCancel">ยกเลิก</button><span class="spacer"></span><button type="submit" class="btn primary" id="adminGo">เข้าสู่ระบบ</button></div>
+  </form>
+</dialog>
+
+<script>
+/* ===== ตั้งค่า: วาง URL ของ Apps Script (ลงท้ายด้วย /exec) ระหว่างเครื่องหมายคำพูด ===== */
+const API_URL="https://script.google.com/macros/s/AKfycbxcR59TPWxD539wHeQjo-RppG7FIRC9mhKQbrKQfSktCfrHHOOSHJFcaJKGZGtEBHdw3Q/exec";
+/* ======================================================================== */
+const BUILDINGS=["อาคาร 1","อาคาร 2","อาคาร 3","อาคาร 4","อาคาร 5","อาคาร 6","อาคาร 7"];
+const OTHER="__other";
+const GROUPS=["คณิตศาสตร์","วิทยาศาสตร์และเทคโนโลยี","ภาษาไทย","ภาษาต่างประเทศ","สังคมศึกษา ศาสนาและวัฒนธรรม","สุขศึกษาและพลศึกษา","ศิลปะ","การงานอาชีพ","กิจกรรมพัฒนาผู้เรียน","อื่น ๆ"];
+const ISSUES={desk:["ขาหลวม/โยก","ขาหัก","หน้าโต๊ะแตก/ผุ","ช่องเก็บของชำรุด","น็อต/สกรูหลุด","อื่น ๆ"],
+              chair:["ขาหลวม/โยก","ขาหัก","ที่นั่งแตก/ผุ","พนักพิงหัก/หลุด","น็อต/สกรูหลุด","อื่น ๆ"]};
+const KIND={desk:"โต๊ะ",chair:"เก้าอี้"};
+const STATUS={wait:"รอส่งซ่อม",sent:"ส่งซ่อมแล้ว",done:"ซ่อมเสร็จ"};
+const TITLE="การสำรวจจำนวนโต๊ะ และเก้าอี้นักเรียน";
+const SCHOOL="โรงเรียนบรรหารแจ่มใสวิทยา 1";
+const TERM="ภาคเรียนที่ 2 ปีการศึกษา 2569";
+const ORG="จัดทำโดย กลุ่มงานบริหารวิชาการ และกลุ่มงานบริหารทั่วไป";
+const ADMIN_TABS=["repair","rooms","report"];
+
+const $=id=>document.getElementById(id);
+const fmt=n=>Number(n||0).toLocaleString("th-TH");
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm=s=>String(s||"").trim().replace(/\s+/g," ");
+const thSort=(a,b)=>String(a).localeCompare(String(b),"th",{numeric:true});
+const bOrder=b=>{const i=BUILDINGS.indexOf(b);return i<0?100:i;};
+const bSort=(a,b)=>bOrder(a)-bOrder(b)||thSort(a,b);
+const gOrder=g=>{const i=GROUPS.indexOf(g);return i<0?100:i;};
+const rid=()=>Math.random().toString(36).slice(2,10);
+function roomId(b,r){
+  const key=(norm(b)+"|"+norm(r)).toLowerCase();
+  let h1=0x811c9dc5,h2=0x01000193;
+  for(const ch of key){const c=ch.codePointAt(0);h1=Math.imul(h1^c,16777619)>>>0;h2=Math.imul(h2+c,2246822519)>>>0;}
+  return "r"+h1.toString(16)+h2.toString(16);
+}
+
+let canWrite=true,rows=[],sumMode="group",openCard=null,lastSavedId=null,adminPw="",sheetUrl="";
+let editingId=null,editingOrig=null,pendingOverwrite=null,canAdmin=false;
+let draft=newDraft();
+function newDraft(keep){return {building:keep?.building||"",room:"",group:keep?.group||"",reporter:keep?.reporter||"",desks:0,chairs:0,desksB:0,chairsB:0,items:[],created:null,existing:false};}
+
+/* ---------- normalize stored rows ---------- */
+function normalizeRow(d,id){
+  const r={...d,_id:id};
+  if(!Array.isArray(r.items)){
+    r.items=[];
+    ["desk","chair"].forEach(k=>{const n=+(k==="desk"?r.desksBroken:r.chairsBroken)||0;
+      for(let i=1;i<=n;i++) r.items.push({id:k+i,kind:k,no:i,issue:"ไม่ระบุ",detail:i===1?(r.note||""):"",status:r.status==="sent"||r.status==="done"?r.status:"wait"});});
+  }
+  r.desksBroken=r.items.filter(i=>i.kind==="desk").length;
+  r.chairsBroken=r.items.filter(i=>i.kind==="chair").length;
+  return r;
+}
+const allItems=(list=rows)=>list.flatMap(r=>r.items.map(it=>({...it,room:r})));
+function phHint(it){return it.issue==="อื่น ๆ"?"ระบุอาการ":"รายละเอียดเพิ่มเติม (ไม่บังคับ)";}
+
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+function showTab(t){
+  if(!canAdmin&&ADMIN_TABS.includes(t)) t="summary";
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===t)));
+  ["form","edit","summary","repair","rooms","report"].forEach(x=>$("tab-"+x).hidden=x!==t);
+  if(t==="report") renderReport();
+  if(t==="edit") renderEdit();
+}
+function applyRole(){
+  document.querySelectorAll(".admin-only").forEach(e=>e.hidden=!canAdmin);
+  $("roleBadge").textContent=canAdmin?"👑 แอดมิน":"👤 ครูผู้กรอก";
+  $("btnAdmin").hidden=canAdmin; $("btnLogout").hidden=!canAdmin;
+  document.querySelectorAll(".sheet-link").forEach(a=>{a.href=sheetUrl||"#";a.hidden=!sheetUrl;});
+  if(editingId) $("btnDelete").hidden=!canAdmin;
+  const cur=document.querySelector('nav.tabs button[aria-selected="true"]')?.dataset.tab;
+  if(cur&&!canAdmin&&ADMIN_TABS.includes(cur)) showTab("form");
+  renderRepair();
+}
+
+/* ---------- form: step 1 ---------- */
+$("fBuilding").innerHTML='<option value="">— เลือกอาคาร —</option>'+BUILDINGS.map(b=>`<option>${b}</option>`).join("");
+$("fGroup").innerHTML='<option value="">— เลือกกลุ่มสาระ —</option>'+GROUPS.map(g=>`<option>${esc(g)}</option>`).join("");
+try{const r=localStorage.getItem("desk-survey-reporter"); if(r) $("fReporter").value=r;}catch(e){}
+
+function readBuilding(){return $("fBuilding").value;}
+function writeBuilding(b){
+  const s=$("fBuilding");
+  if(b&&![...s.options].some(o=>o.value===b)){const o=document.createElement("option");o.value=b;o.textContent=b;s.appendChild(o);}
+  s.value=b||"";
+}
+function fillStep1(){writeBuilding(draft.building);$("fRoom").value=draft.room;$("fGroup").value=draft.group;if(draft.reporter)$("fReporter").value=draft.reporter;}
+
+function setStep(n){
+  ["step1","step2","step3","stepDone"].forEach((id,i)=>$(id).hidden=(n==="done"?id!=="stepDone":id!=="step"+n));
+  $("stepsBar").hidden=n==="done";
+  $("editBar").hidden=!editingId||n==="done";
+  document.querySelectorAll("#stepsBar li").forEach(li=>{const s=+li.dataset.s;li.className=(n!=="done"&&s===n)?"on":(n==="done"||s<n?"done":"");});
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function msg(id,t,cls){const m=$(id);m.textContent=t;m.className="msg"+(cls?" "+cls:"");}
+
+$("next1").addEventListener("click",()=>{
+  const b=readBuilding(),r=norm($("fRoom").value),g=$("fGroup").value,rep=norm($("fReporter").value);
+  if(!$("fBuilding").value) return msg("msg1","เลือกอาคารเรียนก่อน","err");
+  if(!r) return msg("msg1","กรอกห้องเรียนก่อน","err");
+  if(!/^[0-9]{1,6}$/.test(r)&&!(editingOrig&&r===editingOrig.room)) return msg("msg1","ห้องเรียนกรอกเฉพาะตัวเลขเลขห้อง","err");
+  if(!g) return msg("msg1","เลือกกลุ่มสาระการเรียนรู้ที่ดูแล","err");
+  msg("msg1","");
+  try{localStorage.setItem("desk-survey-reporter",rep);}catch(e){}
+  const newId=roomId(b,r), ex=rows.find(x=>x._id===newId);
+  if(editingId){
+    if(newId!==editingId&&ex&&pendingOverwrite!==newId){
+      pendingOverwrite=newId;
+      return msg("msg1",`${b} ห้อง ${r} มีข้อมูลอยู่แล้ว ถ้าไปต่อ ข้อมูลเดิมของห้องนั้นจะถูกแทนที่ กด “ถัดไป” อีกครั้งเพื่อยืนยัน`,"err");
+    }
+    $("s2Note").hidden=newId===editingId;
+    $("s2Note").textContent=`เมื่อบันทึก ข้อมูลจะย้ายจาก ${editingOrig.building} ห้อง ${editingOrig.room} ไปเป็น ${b} ห้อง ${r}`;
+  }else if(ex){
+    draft={building:b,room:r,group:g,reporter:rep,desks:+ex.desks||0,chairs:+ex.chairs||0,desksB:ex.desksBroken,chairsB:ex.chairsBroken,
+      items:ex.items.map(i=>({...i})),created:ex.created||null,existing:true};
+    startEdit(ex);
+    $("s2Note").hidden=false;
+    $("s2Note").textContent=`ห้องนี้บันทึกไว้แล้วโดย ${ex.reporter||"ไม่ระบุชื่อ"} ข้อมูลเดิมขึ้นมาให้แก้ไขแล้ว`;
+  }else if(!(draft.building===b&&draft.room===r)){
+    Object.assign(draft,{desks:0,chairs:0,desksB:0,chairsB:0,items:[],created:null,existing:false});
+    $("s2Note").hidden=true;
+  }
+  pendingOverwrite=null;
+  draft.group=g; draft.reporter=rep; draft.building=b; draft.room=r;
+  $("s2Title").textContent=`${b} ห้อง ${r}`;
+  renderSteppers(); setStep(2);
+});
+
+/* ---------- step 2: steppers ---------- */
+function renderSteppers(){
+  document.querySelectorAll(".stepper").forEach(st=>{
+    const k=st.dataset.key;
+    st.innerHTML=`<button type="button" data-d="-1" aria-label="ลด">−</button><input type="number" min="0" inputmode="numeric" value="${draft[k]}" aria-label="จำนวน"><button type="button" data-d="1" aria-label="เพิ่ม">+</button>`;
+  });
+}
+function setCount(k,v){
+  v=Math.max(0,Math.min(999,Math.floor(Number(v)||0)));
+  draft[k]=v;
+  if(k==="desks"&&draft.desksB>v) draft.desksB=v;
+  if(k==="chairs"&&draft.chairsB>v) draft.chairsB=v;
+  if(k==="desksB"&&v>draft.desks) draft.desks=v;
+  if(k==="chairsB"&&v>draft.chairs) draft.chairs=v;
+  document.querySelectorAll(".stepper").forEach(st=>{const inp=st.querySelector("input"); if(document.activeElement!==inp||st.dataset.key!==k) inp.value=draft[st.dataset.key];});
+}
+document.querySelector(".counters").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-d]"); if(!b) return;
+  const k=b.closest(".stepper").dataset.key; setCount(k,draft[k]+ +b.dataset.d);
+});
+document.querySelector(".counters").addEventListener("input",e=>{
+  const st=e.target.closest(".stepper"); if(st) setCount(st.dataset.key,e.target.value);
+});
+document.querySelector(".counters").addEventListener("change",e=>{
+  const st=e.target.closest(".stepper"); if(st) e.target.value=draft[st.dataset.key];
+});
+$("back2").addEventListener("click",()=>{fillStep1();setStep(1);});
+$("next2").addEventListener("click",()=>{
+  if(draft.desks+draft.chairs===0) return msg("msg2","ใส่จำนวนโต๊ะหรือเก้าอี้อย่างน้อย 1 ตัว","err");
+  msg("msg2","");
+  syncItems();
+  if(draft.items.length){renderItems();setStep(3);} else save();
+});
+function syncItems(){
+  const out=[];
+  ["desk","chair"].forEach(k=>{
+    const target=k==="desk"?draft.desksB:draft.chairsB;
+    let list=draft.items.filter(i=>i.kind===k).slice(0,target);
+    while(list.length<target) list.push({id:rid(),kind:k,issue:"",detail:"",status:"wait"});
+    list.forEach((it,i)=>it.no=i+1); out.push(...list);
+  });
+  draft.items=out;
+}
+
+/* ---------- step 3: items ---------- */
+function renderItems(){
+  const area=$("itemsArea");
+  area.innerHTML=["desk","chair"].map(k=>{
+    const list=draft.items.filter(i=>i.kind===k); if(!list.length) return "";
+    return `<div class="items-group ${k}"><h4><svg><use href="#ico-${k}"/></svg>${KIND[k]}ชำรุด ${list.length} ตัว</h4>
+      ${list.map(it=>`<div class="item" data-id="${it.id}">
+        <b>${KIND[k]}ตัวที่ ${it.no}</b>
+        <div class="chips" role="group" aria-label="อาการของ${KIND[k]}ตัวที่ ${it.no}">
+          ${ISSUES[k].map(is=>`<button type="button" data-issue="${esc(is)}" aria-pressed="${it.issue===is}">${esc(is)}</button>`).join("")}
+        </div>
+        <input data-detail placeholder="${phHint(it)}" value="${esc(it.detail)}" maxlength="200">
+      </div>`).join("")}</div>`;
+  }).join("");
+}
+$("itemsArea").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-issue]"); if(!b) return;
+  const card=b.closest(".item"), it=draft.items.find(i=>i.id===card.dataset.id);
+  it.issue=b.dataset.issue; card.classList.remove("missing");
+  card.querySelectorAll("button[data-issue]").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  card.querySelector("input").placeholder=phHint(it);
+});
+$("itemsArea").addEventListener("input",e=>{
+  if(!e.target.matches("input[data-detail]")) return;
+  const it=draft.items.find(i=>i.id===e.target.closest(".item").dataset.id); it.detail=e.target.value;
+});
+$("back3").addEventListener("click",()=>{renderSteppers();setStep(2);});
+$("save3").addEventListener("click",()=>{
+  const miss=draft.items.filter(i=>!i.issue||i.issue==="ไม่ระบุ");
+  document.querySelectorAll(".item").forEach(c=>c.classList.toggle("missing",miss.some(m=>m.id===c.dataset.id)));
+  if(miss.length){msg("msg3",`ยังไม่ได้เลือกอาการอีก ${miss.length} ตัว (กรอบสีแดง)`,"err");document.querySelector(".item.missing")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
+  msg("msg3",""); save();
+});
+
+/* ---------- save ---------- */
+async function save(){
+  const btns=[$("save3"),$("next2")]; const m=draft.items.length?"msg3":"msg2";
+  if(!API_OK) return msg(m,"ยังไม่ได้เชื่อมต่อ Google Sheet","err");
+  const id=roomId(draft.building,draft.room);
+  const items=draft.items.map(i=>({id:i.id,kind:i.kind,no:i.no,issue:i.issue,detail:norm(i.detail).slice(0,200),status:i.status||"wait"}));
+  const data={building:draft.building,room:draft.room,group:draft.group,reporter:draft.reporter.slice(0,80),
+    desks:draft.desks,chairs:draft.chairs,desksBroken:draft.desksB,chairsBroken:draft.chairsB,items,
+    created:draft.created||Date.now(),updated:Date.now()};
+  btns.forEach(b=>b.disabled=true); msg(m,"กำลังบันทึก…");
+  try{
+    const oldId=editingId&&editingId!==id?editingId:null;
+    await api("save",{id,oldId,room:data});
+    rows=rows.filter(x=>x._id!==id&&x._id!==oldId); rows.push(normalizeRow({...data,id},id)); renderAll();
+    lastSavedId=id; msg(m,"");
+    $("doneTitle").textContent=`บันทึก ${draft.building} ห้อง ${draft.room} แล้ว`;
+    $("doneSum").innerHTML=`<span>โต๊ะ</span><b>${fmt(draft.desks)} ตัว${draft.desksB?` <span class="bad">(ชำรุด ${fmt(draft.desksB)})</span>`:""}</b>
+      <span>เก้าอี้</span><b>${fmt(draft.chairs)} ตัว${draft.chairsB?` <span class="bad">(ชำรุด ${fmt(draft.chairsB)})</span>`:""}</b>
+      <span>กลุ่มสาระ</span><b>${esc(draft.group)}</b>`;
+    draft.existing=true; draft.created=data.created;
+    startEdit({_id:id,building:draft.building,room:draft.room});
+    setStep("done");
+  }catch(e){
+    msg(m,"บันทึกไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วกดอีกครั้ง","err");
+  }
+  btns.forEach(b=>b.disabled=false);
+}
+$("nextRoom").addEventListener("click",()=>{editingId=null;editingOrig=null;draft=newDraft(draft);fillStep1();$("s2Note").hidden=true;setStep(1);$("fRoom").focus();});
+$("editAgain").addEventListener("click",()=>{renderSteppers();setStep(2);});
+
+function openRoom(r){
+  draft={building:r.building,room:r.room,group:r.group,reporter:$("fReporter").value||r.reporter||"",desks:+r.desks||0,chairs:+r.chairs||0,
+    desksB:r.desksBroken,chairsB:r.chairsBroken,items:r.items.map(i=>({...i})),created:r.created||null,existing:true};
+  startEdit(r); fillStep1(); $("s2Note").hidden=true; ["msg1","msg2","msg3"].forEach(id=>msg(id,""));
+  showTab("form"); setStep(1);
+}
+function startEdit(r){
+  editingId=r._id; editingOrig={building:r.building,room:r.room}; pendingOverwrite=null;
+  $("editText").textContent=`กำลังแก้ไข: ${r.building} ห้อง ${r.room}`;
+  $("btnDelete").hidden=!canAdmin; resetDelete();
+  $("editBar").hidden=false;
+}
+function cancelEdit(){
+  editingId=null; editingOrig=null; pendingOverwrite=null;
+  draft=newDraft(draft); fillStep1(); $("s2Note").hidden=true;
+  ["msg1","msg2","msg3"].forEach(id=>msg(id,"")); setStep(1);
+}
+$("btnCancelEdit").addEventListener("click",cancelEdit);
+let delArmed=null;
+function resetDelete(){clearTimeout(delArmed);delArmed=null;$("btnDelete").textContent="🗑 ลบห้องนี้";}
+$("btnDelete").addEventListener("click",async()=>{
+  if(!editingId||!canAdmin) return;
+  if(!delArmed){$("btnDelete").textContent="กดอีกครั้งเพื่อยืนยันการลบ";delArmed=setTimeout(resetDelete,5000);return;}
+  resetDelete(); $("btnDelete").disabled=true;
+  const label=`${editingOrig.building} ห้อง ${editingOrig.room}`;
+  try{const id=editingId; await api("delete",{id},true); rows=rows.filter(x=>x._id!==id); renderAll(); cancelEdit(); msg("msg1",`ลบ ${label} แล้ว`,"ok");}
+  catch(e){msg("msg1",e.message==="รหัสผ่านไม่ถูกต้อง"?"รหัสผ่านแอดมินไม่ถูกต้อง เข้าสู่ระบบใหม่":"ลบไม่สำเร็จ ลองอีกครั้ง","err");}
+  $("btnDelete").disabled=false;
+});
+
+/* ---------- aggregation ---------- */
+function agg(list){
+  const a={rooms:list.length,desks:0,chairs:0,desksB:0,chairsB:0,pending:0};
+  list.forEach(r=>{a.desks+=+r.desks||0;a.chairs+=+r.chairs||0;a.desksB+=r.desksBroken;a.chairsB+=r.chairsBroken;a.pending+=r.items.filter(i=>i.status!=="done").length;});
+  a.items=a.desks+a.chairs;a.broken=a.desksB+a.chairsB;a.pct=a.items?a.broken/a.items*100:0;
+  return a;
+}
+function groupBy(key){const m=new Map();rows.forEach(r=>{const k=r[key]||"(ไม่ระบุ)";if(!m.has(k))m.set(k,[]);m.get(k).push(r);});return m;}
+function sortedKeys(m,key){return [...m.keys()].sort(key==="group"?(a,b)=>gOrder(a)-gOrder(b)||thSort(a,b):bSort);}
+function issueCounts(list=rows){
+  const out=[];
+  ["desk","chair"].forEach(k=>{
+    const its=allItems(list).filter(i=>i.kind===k); const order=[...ISSUES[k],"ไม่ระบุ"];
+    order.forEach(is=>{const l=its.filter(i=>i.issue===is);if(l.length) out.push({k,is,n:l.length,pend:l.filter(i=>i.status!=="done").length});});
+  });
+  return out;
+}
+function issueTable(paper,list=rows){
+  const out=[];
+  ["desk","chair"].forEach(k=>{
+    const its=allItems(list).filter(i=>i.kind===k); const order=[...ISSUES[k],"ไม่ระบุ"];
+    order.forEach(is=>{const l=its.filter(i=>i.issue===is);if(l.length) out.push({k,is,n:l.length,pend:l.filter(i=>i.status!=="done").length});});
+  });
+  if(!out.length) return paper?"<p>ไม่มีรายการชำรุด</p>":`<div class="panel empty">ไม่มีรายการชำรุด</div>`;
+  const body=out.map(o=>`<tr><td>${paper?KIND[o.k]:`<span class="kind-tag ${o.k}">${KIND[o.k]}</span>`}</td><td>${esc(o.is)}</td><td class="n">${fmt(o.n)}</td><td class="n">${fmt(o.pend)}</td></tr>`).join("");
+  const t=`<table><thead><tr><th>ประเภท</th><th>อาการเสีย</th><th class="n">จำนวน (ตัว)</th><th class="n">ยังไม่ซ่อมเสร็จ</th></tr></thead><tbody>${body}</tbody></table>`;
+  return paper?t:`<div class="scroll">${t}</div>`;
+}
+
+/* ---------- render all ---------- */
+function renderAll(){
+  const a=agg(rows);
+  $("tRooms").textContent=fmt(a.rooms);$("tDesks").textContent=fmt(a.desks);$("tChairs").textContent=fmt(a.chairs);$("tPending").textContent=fmt(a.pending);
+  const bs=[...new Set(rows.map(r=>r.building))].sort(bSort);
+  fillFilter("rpB",bs,"ทุกอาคาร");fillFilter("rmB",bs,"ทุกอาคาร");fillFilter("rmG",GROUPS,"ทุกกลุ่มสาระ");
+  fillEdB();renderSummary();renderRepair();renderRooms();renderEdit();
+  if(!$("tab-report").hidden) renderReport();
+}
+function fillFilter(id,opts,all){const s=$(id),cur=s.value;s.innerHTML=`<option value="">${all}</option>`+opts.map(o=>`<option>${esc(o)}</option>`).join("");if(opts.includes(cur))s.value=cur;}
+function barHTML(p){p=Math.min(100,p||0);return `<div class="bar" title="ชำรุด ${p.toFixed(1)}%"><i style="width:${p}%"></i></div><span class="pct">ชำรุด ${p.toFixed(1)}%</span>`;}
+
+/* ---------- summary ---------- */
+document.querySelectorAll(".switch button").forEach(b=>b.addEventListener("click",()=>{
+  sumMode=b.dataset.sum;openCard=null;
+  document.querySelectorAll(".switch button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));renderSummary();
+}));
+function aggTable(key){
+  const m=groupBy(key),keys=sortedKeys(m,key),tot=agg(rows);
+  const row=(k,a,cls)=>`<tr${cls?` class="${cls}"`:""}><td>${esc(k)}</td><td class="n">${fmt(a.rooms)}</td><td class="n">${fmt(a.desks)}</td><td class="n">${a.desksB?`<span class="bad">${fmt(a.desksB)}</span>`:"0"}</td><td class="n">${fmt(a.chairs)}</td><td class="n">${a.chairsB?`<span class="bad">${fmt(a.chairsB)}</span>`:"0"}</td><td>${barHTML(a.pct)}</td></tr>`;
+  return `<div class="scroll"><table><thead><tr><th>${key==="group"?"กลุ่มสาระการเรียนรู้":"อาคารเรียน"}</th><th class="n">ห้อง</th><th class="n">โต๊ะ</th><th class="n">โต๊ะชำรุด</th><th class="n">เก้าอี้</th><th class="n">เก้าอี้ชำรุด</th><th>สัดส่วนชำรุด</th></tr></thead>
+    <tbody>${keys.map(k=>row(k,agg(m.get(k)))).join("")}${row("รวมทั้งหมด",tot,"total")}</tbody></table></div>`;
+}
+function donut(ok,total,color,label){
+  const r=46,c=2*Math.PI*r,pct=total?ok/total*100:0;
+  return `<svg viewBox="0 0 120 120" class="donut" role="img" aria-label="${label} ใช้งานได้ ${pct.toFixed(0)}%">
+    <circle cx="60" cy="60" r="${r}" fill="none" stroke="${total?"var(--bad)":"var(--line)"}" stroke-width="14"/>
+    <circle cx="60" cy="60" r="${r}" fill="none" stroke="${color}" stroke-width="14" stroke-dasharray="${(c*pct/100).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 60 60)"/>
+    <text x="60" y="62" text-anchor="middle" class="d-big">${total?pct.toFixed(0)+"%":"–"}</text>
+    <text x="60" y="80" text-anchor="middle" class="d-sm">ใช้งานได้</text></svg>`;
+}
+function hbars(entries){
+  const max=Math.max(1,...entries.map(e=>e.total));
+  return entries.map(e=>`<div class="hb-row"><span class="hb-label" title="${esc(e.label)}">${esc(e.label)}</span>
+    ${e.total?`<div class="hb-track">${e.segs.map(g=>`<i class="${g.cls}" style="width:${(g.v/max*100).toFixed(2)}%"></i>`).join("")}</div>`:`<span class="hb-none">ยังไม่มีข้อมูล</span>`}
+    <span class="hb-val">${e.total?fmt(e.total):""}${e.note?`<small>${e.note}</small>`:""}</span></div>`).join("");
+}
+function okBadEntry(label,list){
+  const a=agg(list);
+  return {label,total:a.items,segs:[{cls:"c-ok",v:a.items-a.broken},{cls:"c-bad",v:a.broken}],note:a.broken?`ชำรุด ${fmt(a.broken)}`:""};
+}
+const LEG_OKBAD=`<div class="legend"><span><i class="c-ok"></i>ใช้งานได้</span><span><i class="c-bad"></i>ชำรุด</span><span>ตัวเลข = โต๊ะ + เก้าอี้ (ตัว)</span></div>`;
+function renderDash(){
+  const el=$("dashBody");
+  if(!rows.length){el.innerHTML=`<div class="panel empty">ยังไม่มีห้องที่บันทึก เริ่มได้ที่แท็บ “บันทึกข้อมูล”</div>`;return;}
+  const t=agg(rows), its=allItems(), st={wait:0,sent:0,done:0}; its.forEach(i=>st[i.status||"wait"]++);
+  const nIt=its.length||1;
+  const bm=groupBy("building"), bKeys=[...new Set([...BUILDINGS,...bm.keys()])].sort(bSort);
+  const gm=groupBy("group"), gKeys=sortedKeys(gm,"group");
+  const issues=issueCounts().sort((a,b)=>b.n-a.n).slice(0,8);
+  el.innerHTML=`<div class="dash-top">
+    <div class="kpi desk">${donut(t.desks-t.desksB,t.desks,"var(--desk)","โต๊ะ")}<div><h4><svg><use href="#ico-desk"/></svg>โต๊ะนักเรียน</h4><b class="kpi-n">${fmt(t.desks)} <small style="font-size:1rem;font-weight:400">ตัว</small></b><p>ใช้งานได้ ${fmt(t.desks-t.desksB)} ตัว</p><p class="bad">ชำรุด ${fmt(t.desksB)} ตัว</p></div></div>
+    <div class="kpi chair">${donut(t.chairs-t.chairsB,t.chairs,"var(--chair)","เก้าอี้")}<div><h4><svg><use href="#ico-chair"/></svg>เก้าอี้นักเรียน</h4><b class="kpi-n">${fmt(t.chairs)} <small style="font-size:1rem;font-weight:400">ตัว</small></b><p>ใช้งานได้ ${fmt(t.chairs-t.chairsB)} ตัว</p><p class="bad">ชำรุด ${fmt(t.chairsB)} ตัว</p></div></div>
+    <div class="kpi repair"><h4>🔧 ความคืบหน้าการซ่อม</h4>
+      <b class="kpi-n">${its.length?Math.round(st.done/nIt*100)+"%":"–"}</b><span class="pct">${its.length?`ซ่อมเสร็จ ${fmt(st.done)} จาก ${fmt(its.length)} ตัว`:"ยังไม่มีของชำรุด"}</span>
+      <div class="prog"><i class="c-bad" style="width:${st.wait/nIt*100}%"></i><i class="c-sent" style="width:${st.sent/nIt*100}%"></i><i class="c-ok" style="width:${st.done/nIt*100}%"></i></div>
+      <div class="legend"><span><i class="c-bad"></i>รอส่งซ่อม ${fmt(st.wait)}</span><span><i class="c-sent"></i>ส่งซ่อมแล้ว ${fmt(st.sent)}</span><span><i class="c-ok"></i>ซ่อมเสร็จ ${fmt(st.done)}</span></div>
+    </div>
+  </div>
+  <div class="dash-grid">
+    <div class="chart-card"><h4>🏫 รายอาคารเรียน</h4>${LEG_OKBAD}${hbars(bKeys.map(k=>okBadEntry(k,bm.get(k)||[])))}</div>
+    <div class="chart-card"><h4>📚 รายกลุ่มสาระการเรียนรู้</h4>${LEG_OKBAD}${hbars(gKeys.map(k=>okBadEntry(k,gm.get(k))))}</div>
+    <div class="chart-card"><h4>⚠️ อาการเสียที่พบบ่อย</h4><div class="legend"><span><i class="c-desk"></i>โต๊ะ</span><span><i class="c-chair"></i>เก้าอี้</span><span>ตัวเลข = จำนวน (ตัว)</span></div>
+      ${issues.length?hbars(issues.map(o=>({label:`${KIND[o.k]}: ${o.is}`,total:o.n,segs:[{cls:o.k==="desk"?"c-desk":"c-chair",v:o.n}],note:o.pend?`ยังไม่เสร็จ ${fmt(o.pend)}`:""}))):`<p class="hb-none">ยังไม่มีของชำรุด</p>`}</div>
+  </div>`;
+}
+function renderSummary(){
+  renderDash();
+  const el=$("sumBody");
+  if(!rows.length){el.innerHTML="";return;}
+  const key=sumMode==="group"?"group":"building";
+  const m=groupBy(key),keys=sortedKeys(m,key);
+  el.innerHTML=`<div class="cards" id="cardGrid">${keys.map(k=>{const a=agg(m.get(k));const open=openCard===k;
+    return `<button class="card" data-k="${esc(k)}" aria-expanded="${open}">
+      <h4>${esc(k)}</h4><span class="sub">${fmt(a.rooms)} ห้อง${a.pending?` · <span class="bad">รอซ่อม ${fmt(a.pending)} ตัว</span>`:""}</span>
+      <div class="nums"><div class="d"><small>โต๊ะ</small><b>${fmt(a.desks)}</b>${a.desksB?`<em>ชำรุด ${fmt(a.desksB)}</em>`:`<small>ไม่มีชำรุด</small>`}</div>
+      <div class="c"><small>เก้าอี้</small><b>${fmt(a.chairs)}</b>${a.chairsB?`<em>ชำรุด ${fmt(a.chairsB)}</em>`:`<small>ไม่มีชำรุด</small>`}</div></div>
+      ${barHTML(a.pct)}</button>${open?cardDetail(m.get(k)):""}`;}).join("")}</div>
+    <div class="sum-table"><h3>ตารางสรุป</h3>${aggTable(key)}</div>`;
+  el.querySelectorAll(".card[data-k]").forEach(c=>c.addEventListener("click",()=>{openCard=openCard===c.dataset.k?null:c.dataset.k;renderSummary();}));
+}
+function cardDetail(list){
+  list=[...list].sort((a,b)=>bSort(a.building,b.building)||thSort(a.room,b.room));
+  return `<ul class="room-list card-detail">${list.map(r=>`<li><b>${esc(r.building)} ห้อง ${esc(r.room)}</b><span>${esc(r.group)}</span><br><span>โต๊ะ ${fmt(r.desks)}${r.desksBroken?` <span class="bad">(ชำรุด ${r.desksBroken})</span>`:""} &nbsp; เก้าอี้ ${fmt(r.chairs)}${r.chairsBroken?` <span class="bad">(ชำรุด ${r.chairsBroken})</span>`:""}</span></li>`).join("")}</ul>`;
+}
+function fillEdB(){
+  const sel=$("edB"),cur=sel.value,bs=[...new Set([...BUILDINGS,...rows.map(r=>r.building)])].sort(bSort);
+  sel.innerHTML=`<option value="">— เลือกอาคาร —</option>`+bs.map(b=>{const n=rows.filter(r=>r.building===b).length;return `<option value="${esc(b)}">${esc(b)}${n?` (${n} ห้อง)`:""}</option>`;}).join("");
+  if(bs.includes(cur)) sel.value=cur;
+}
+function renderEdit(){
+  const el=$("editBody"), b=$("edB").value;
+  if(!b){el.innerHTML=`<div class="panel empty">เลือกอาคารก่อน</div>`;return;}
+  const list=rows.filter(r=>r.building===b).sort((x,y)=>thSort(x.room,y.room));
+  if(!list.length){el.innerHTML=`<div class="panel empty">${esc(b)} ยังไม่มีห้องที่บันทึก</div>`;return;}
+  el.innerHTML=`<div class="mine-list">${list.map(r=>`<div class="mine-card"><div class="info"><b>ห้อง ${esc(r.room)}</b><small>${esc(r.group)}${r.reporter?` (ผู้สำรวจ: ${esc(r.reporter)})`:""}</small><br><span>โต๊ะ ${fmt(r.desks)}${r.desksBroken?` <span class="bad">(ชำรุด ${r.desksBroken})</span>`:""} &nbsp; เก้าอี้ ${fmt(r.chairs)}${r.chairsBroken?` <span class="bad">(ชำรุด ${r.chairsBroken})</span>`:""}</span></div><button class="edit-btn" type="button" data-mine="${r._id}">✏️ แก้ไข</button></div>`).join("")}</div>`;
+}
+$("edB").addEventListener("change",renderEdit);
+$("editBody").addEventListener("click",e=>{const b=e.target.closest("[data-mine]");if(!b)return;const r=rows.find(x=>x._id===b.dataset.mine);if(r)openRoom(r);});
+
+/* ---------- repair ---------- */
+function repairList(){
+  const fb=$("rpB").value,fk=$("rpK").value,fs=$("rpS").value;
+  return allItems().filter(i=>(!fb||i.room.building===fb)&&(!fk||i.kind===fk)&&(!fs||(i.status||"wait")===fs))
+    .sort((a,b)=>bSort(a.room.building,b.room.building)||thSort(a.room.room,b.room.room)||(a.kind===b.kind?a.no-b.no:a.kind==="desk"?-1:1));
+}
+function renderRepair(){
+  const list=repairList(),el=$("repairBody");
+  if(!list.length){el.innerHTML=`<div class="panel empty">ไม่มีรายการส่งซ่อมตามตัวกรองนี้</div>`;return;}
+  el.innerHTML=`<div class="scroll"><table><thead><tr><th>อาคาร</th><th>ห้อง</th><th>รายการ</th><th>อาการเสีย</th><th>รายละเอียด</th><th>สถานะ</th><th></th></tr></thead><tbody>
+  ${list.map(i=>{const s=i.status||"wait";return `<tr><td>${esc(i.room.building)}</td><td>${esc(i.room.room)}</td>
+    <td><span class="kind-tag ${i.kind}">${KIND[i.kind]}ตัวที่ ${i.no}</span></td><td>${esc(i.issue)}</td><td>${esc(i.detail)||'<span class="pct">–</span>'}</td>
+    <td>${canAdmin?`<select data-r="${i.room._id}" data-i="${esc(i.id)}" aria-label="สถานะ">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${k===s?" selected":""}>${v}</option>`).join("")}</select>`:`<span class="pill st-${s}">${STATUS[s]}</span>`}</td><td><button class="edit-btn" type="button" data-open="${i.room._id}">✏️ แก้ไขห้อง</button></td></tr>`;}).join("")}
+  <tr class="total"><td colspan="7">รวม ${fmt(list.length)} ตัว (โต๊ะ ${fmt(list.filter(i=>i.kind==="desk").length)} · เก้าอี้ ${fmt(list.filter(i=>i.kind==="chair").length)})</td></tr>
+  </tbody></table></div>`;
+  el.querySelectorAll("select[data-r]").forEach(sel=>sel.addEventListener("change",async()=>{
+    const r=rows.find(x=>x._id===sel.dataset.r); if(!r) return;
+    const prev=r.items.find(i=>i.id===sel.dataset.i)?.status||"wait";
+    sel.disabled=true;
+    try{await api("status",{roomId:r._id,itemId:sel.dataset.i,status:sel.value},true);
+      r.items=r.items.map(i=>i.id===sel.dataset.i?{...i,status:sel.value}:i); renderAll();}
+    catch(e){sel.value=prev;sel.disabled=false;alert(e.message==="รหัสผ่านไม่ถูกต้อง"?"รหัสผ่านแอดมินไม่ถูกต้อง เข้าสู่ระบบใหม่":"เปลี่ยนสถานะไม่สำเร็จ ลองอีกครั้ง");}
+  }));
+}
+["rpB","rpK","rpS"].forEach(id=>$(id).addEventListener("change",renderRepair));
+$("repairBody").addEventListener("click",e=>{const b=e.target.closest("[data-open]");if(!b)return;const r=rows.find(x=>x._id===b.dataset.open);if(r)openRoom(r);});
+
+/* ---------- rooms ---------- */
+function renderRooms(){
+  const fb=$("rmB").value,fg=$("rmG").value,el=$("roomsBody");
+  const list=rows.filter(r=>(!fb||r.building===fb)&&(!fg||r.group===fg)).sort((a,b)=>bSort(a.building,b.building)||thSort(a.room,b.room));
+  if(!list.length){el.innerHTML=`<div class="panel empty">ยังไม่มีห้องตามตัวกรองนี้</div>`;return;}
+  el.innerHTML=`<div class="scroll"><table><thead><tr><th>อาคาร</th><th>ห้อง</th><th>กลุ่มสาระ</th><th class="n">โต๊ะ</th><th class="n">ชำรุด</th><th class="n">เก้าอี้</th><th class="n">ชำรุด</th><th>ผู้สำรวจ</th><th>อัปเดต</th><th></th></tr></thead><tbody>
+  ${list.map(r=>{const w=r.items.some(i=>i.status==="wait"),s=r.items.some(i=>i.status==="sent");
+    return `<tr class="click" tabindex="0" data-id="${r._id}"><td><span class="dot ${w?"wait":s?"sent":"ok"}"></span>${esc(r.building)}</td><td>${esc(r.room)}</td><td>${esc(r.group)}</td>
+    <td class="n">${fmt(r.desks)}</td><td class="n">${r.desksBroken?`<span class="bad">${r.desksBroken}</span>`:0}</td><td class="n">${fmt(r.chairs)}</td><td class="n">${r.chairsBroken?`<span class="bad">${r.chairsBroken}</span>`:0}</td>
+    <td>${esc(r.reporter)}</td><td class="pct">${r.updated?new Date(r.updated).toLocaleDateString("th-TH",{day:"numeric",month:"short",year:"2-digit"}):""}</td><td><button class="edit-btn" type="button">✏️ แก้ไข</button></td></tr>`;}).join("")}
+  </tbody></table></div>`;
+  el.querySelectorAll("tr.click").forEach(tr=>{const go=()=>{const r=rows.find(x=>x._id===tr.dataset.id);if(r)openRoom(r);};
+    tr.addEventListener("click",go);tr.addEventListener("keydown",e=>{if(e.key==="Enter")go();});});
+}
+["rmB","rmG"].forEach(id=>$(id).addEventListener("change",renderRooms));
+
+/* ---------- report ---------- */
+const SIGN=`<div class="sign"><div><p>ลงชื่อ ...........................................</p><p>(...........................................)</p><p>ผู้รายงาน</p></div>
+  <div><p>ลงชื่อ ...........................................</p><p>(...........................................)</p><p>ผู้อำนวยการโรงเรียน</p></div></div>`;
+function repHead(sub){
+  const today=new Date().toLocaleDateString("th-TH",{dateStyle:"long"});
+  return `<h1>${TITLE}<br>${SCHOOL}</h1><p class="meta">${sub?`<b>${esc(sub)}</b><br>`:""}${TERM}<br>${ORG}<br>ข้อมูล ณ วันที่ ${today}</p>`;
+}
+function repTotals(t){
+  return `<table><thead><tr><th>รายการ</th><th class="n">ทั้งหมด</th><th class="n">ใช้งานได้</th><th class="n">ชำรุด</th><th class="n">ร้อยละชำรุด</th></tr></thead><tbody>
+    <tr><td>โต๊ะนักเรียน</td><td class="n">${fmt(t.desks)}</td><td class="n">${fmt(t.desks-t.desksB)}</td><td class="n">${fmt(t.desksB)}</td><td class="n">${(t.desks?t.desksB/t.desks*100:0).toFixed(1)}</td></tr>
+    <tr><td>เก้าอี้นักเรียน</td><td class="n">${fmt(t.chairs)}</td><td class="n">${fmt(t.chairs-t.chairsB)}</td><td class="n">${fmt(t.chairsB)}</td><td class="n">${(t.chairs?t.chairsB/t.chairs*100:0).toFixed(1)}</td></tr>
+    <tr class="total"><td>รวม (สำรวจ ${fmt(t.rooms)} ห้อง)</td><td class="n">${fmt(t.items)}</td><td class="n">${fmt(t.items-t.broken)}</td><td class="n">${fmt(t.broken)}</td><td class="n">${t.pct.toFixed(1)}</td></tr>
+  </tbody></table>`;
+}
+function repItems(list){
+  const only=$("rpOnlyPending").checked;
+  const items=allItems(list).filter(i=>!only||i.status!=="done").sort((a,b)=>bSort(a.room.building,b.room.building)||thSort(a.room.room,b.room.room)||(a.kind===b.kind?a.no-b.no:a.kind==="desk"?-1:1));
+  return {only,html:items.length?`<table><thead><tr><th class="n">ที่</th><th>อาคาร</th><th>ห้อง</th><th>รายการ</th><th>อาการเสีย</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead><tbody>
+  ${items.map((i,n)=>`<tr><td class="n">${n+1}</td><td>${esc(i.room.building)}</td><td>${esc(i.room.room)}</td><td>${KIND[i.kind]}ตัวที่ ${i.no}</td><td>${esc(i.issue)}</td><td>${esc(i.detail)}</td><td>${STATUS[i.status||"wait"]}</td></tr>`).join("")}
+  </tbody></table>`:"<p>ไม่มีรายการ</p>"};
+}
+function paperBars(key){
+  const m=groupBy(key), keys=key==="building"?[...new Set([...BUILDINGS,...m.keys()])].sort(bSort):sortedKeys(m,key);
+  const ents=keys.map(k=>agg(m.get(k)||[])), max=Math.max(1,...ents.map(a=>a.items));
+  return `<div class="pb-legend"><i style="background:#2E7D5B"></i>ใช้งานได้<i style="background:#B8402B"></i>ชำรุด</div>`+
+    keys.map((k,i)=>{const a=ents[i];return `<div class="pb-row"><span>${esc(k)}</span><div class="pb-track"><i style="width:${((a.items-a.broken)/max*100).toFixed(2)}%;background:#2E7D5B"></i><i style="width:${(a.broken/max*100).toFixed(2)}%;background:#B8402B"></i></div><span>${a.items?`${fmt(a.items)} ตัว (ชำรุด ${fmt(a.broken)})`:"ยังไม่มีข้อมูล"}</span></div>`;}).join("");
+}
+function aggTablePaper(key){
+  const m=groupBy(key),keys=sortedKeys(m,key),t=agg(rows);
+  const row=(k,a,c)=>`<tr${c?' class="total"':""}><td>${esc(k)}</td><td class="n">${fmt(a.rooms)}</td><td class="n">${fmt(a.desks)}</td><td class="n">${fmt(a.desksB)}</td><td class="n">${fmt(a.chairs)}</td><td class="n">${fmt(a.chairsB)}</td><td class="n">${a.pct.toFixed(1)}</td></tr>`;
+  return `<table><thead><tr><th>${key==="group"?"กลุ่มสาระการเรียนรู้":"อาคารเรียน"}</th><th class="n">ห้อง</th><th class="n">โต๊ะ</th><th class="n">โต๊ะชำรุด</th><th class="n">เก้าอี้</th><th class="n">เก้าอี้ชำรุด</th><th class="n">ร้อยละชำรุด</th></tr></thead><tbody>${keys.map(k=>row(k,agg(m.get(k)))).join("")}${row("รวม",t,1)}</tbody></table>`;
+}
+function reportOverview(){
+  const it=repItems(rows);
+  return `${repHead("รายงานภาพรวมทั้งโรงเรียน")}
+  <h2>1. ภาพรวมทั้งโรงเรียน</h2>${repTotals(agg(rows))}
+  <h2>2. กราฟเปรียบเทียบรายอาคารเรียน</h2>${paperBars("building")}
+  <h2>3. สรุปแยกตามกลุ่มสาระการเรียนรู้</h2>${aggTablePaper("group")}
+  <h2>4. สรุปแยกตามอาคารเรียน</h2>${aggTablePaper("building")}
+  <h2>5. สรุปตามอาการเสีย</h2>${issueTable(true)}
+  <h2>6. รายการโต๊ะและเก้าอี้ที่ต้องซ่อม${it.only?" (ยังไม่ซ่อมเสร็จ)":""}</h2>${it.html}${SIGN}`;
+}
+function reportSection(key,val){
+  const list=rows.filter(r=>(r[key]||"(ไม่ระบุ)")===val).sort((a,b)=>bSort(a.building,b.building)||thSort(a.room,b.room));
+  const t=agg(list), it=repItems(list), other=key==="building"?"group":"building";
+  const label=key==="building"?`รายงานแยกรายอาคาร: ${val}`:`รายงานแยกรายกลุ่มสาระ: ${val}`;
+  return `${repHead(label)}
+  <h2>1. สรุปจำนวนโต๊ะและเก้าอี้</h2>${repTotals(t)}
+  <h2>2. ข้อมูลรายห้อง</h2>
+  <table><thead><tr><th>อาคาร</th><th>ห้อง</th>${other==="group"?"<th>กลุ่มสาระ</th>":""}<th class="n">โต๊ะ</th><th class="n">โต๊ะชำรุด</th><th class="n">เก้าอี้</th><th class="n">เก้าอี้ชำรุด</th><th>ผู้สำรวจ</th></tr></thead><tbody>
+  ${list.map(r=>`<tr><td>${esc(r.building)}</td><td>${esc(r.room)}</td>${other==="group"?`<td>${esc(r.group)}</td>`:""}<td class="n">${fmt(r.desks)}</td><td class="n">${fmt(r.desksBroken)}</td><td class="n">${fmt(r.chairs)}</td><td class="n">${fmt(r.chairsBroken)}</td><td>${esc(r.reporter)}</td></tr>`).join("")}
+  <tr class="total"><td colspan="${other==="group"?3:2}">รวม ${fmt(t.rooms)} ห้อง</td><td class="n">${fmt(t.desks)}</td><td class="n">${fmt(t.desksB)}</td><td class="n">${fmt(t.chairs)}</td><td class="n">${fmt(t.chairsB)}</td><td></td></tr>
+  </tbody></table>
+  <h2>3. สรุปตามอาการเสีย</h2>${issueTable(true,list)}
+  <h2>4. รายการโต๊ะและเก้าอี้ที่ต้องซ่อม${it.only?" (ยังไม่ซ่อมเสร็จ)":""}</h2>${it.html}${SIGN}`;
+}
+function fillRepWhich(){
+  const type=$("repType").value, sel=$("repWhich"), cur=sel.value;
+  $("repWhichWrap").hidden=type==="overview";
+  if(type==="overview") return;
+  const m=groupBy(type), keys=sortedKeys(m,type);
+  $("repWhichLbl").textContent=type==="building"?"อาคาร":"กลุ่มสาระ";
+  sel.innerHTML=`<option value="__all">${type==="building"?"ทุกอาคาร (อาคารละหน้า)":"ทุกกลุ่มสาระ (กลุ่มละหน้า)"}</option>`+keys.map(k=>`<option>${esc(k)}</option>`).join("");
+  if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+}
+function reportInner(){
+  const type=$("repType").value;
+  if(type==="overview") return reportOverview();
+  const which=$("repWhich").value||"__all";
+  const keys=which==="__all"?sortedKeys(groupBy(type),type):[which];
+  return keys.map((k,i)=>`<div class="rpage${i?" brk":""}">${reportSection(type,k)}</div>`).join("");
+}
+function renderReport(){fillRepWhich();$("reportDoc").innerHTML=rows.length?reportInner():`<p style="text-align:center">ยังไม่มีข้อมูลสำหรับออกรายงาน</p>`;}
+$("rpOnlyPending").addEventListener("change",renderReport);
+$("repType").addEventListener("change",()=>{$("repWhich").value="__all";renderReport();});
+$("repWhich").addEventListener("change",renderReport);
+$("btnPrint").addEventListener("click",()=>{renderReport();try{window.print();}catch(e){}msg("repMsg","ถ้าหน้าต่างพิมพ์ไม่ขึ้น ใช้ปุ่ม “ดาวน์โหลดไฟล์รายงาน” แล้วเปิดไฟล์เพื่อพิมพ์");});
+$("btnDlReport").addEventListener("click",async()=>{
+  if(!rows.length) return msg("repMsg","ยังไม่มีข้อมูลสำหรับออกรายงาน","err");
+  const css=`body{font-family:"Sarabun","TH Sarabun New",serif;color:#151515;font-size:15px;line-height:1.55;max-width:820px;margin:30px auto;padding:0 20px}
+  h1{font-size:1.35rem;text-align:center;margin:0;line-height:1.4}.meta{text-align:center;margin:4px 0 22px}h2{font-size:1.08rem;margin:22px 0 8px;break-after:avoid}
+  table{border-collapse:collapse;width:100%}th,td{border:1px solid #9AA5A1;padding:5px 8px;text-align:left}th{background:#EEF2F0}.n{text-align:right}tr{break-inside:avoid}
+  tr.total td{background:#F4F6F5;font-weight:700}.sign{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:46px;text-align:center}.sign p{margin:0}@page{size:A4;margin:14mm}@media print{body{margin:0;padding:0;max-width:none}}
+  .brk{break-before:page;margin-top:44px}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .pb-row{display:grid;grid-template-columns:150px 1fr 130px;gap:8px;align-items:center;margin:4px 0}.pb-track{display:flex;height:14px;background:#EEF2F0}.pb-track i{display:block;height:100%}
+  .pb-legend{font-size:.9rem;margin:4px 0 8px}.pb-legend i{display:inline-block;width:12px;height:12px;margin:0 4px -1px 10px}`;
+  renderReport();
+  const html=`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>รายงาน${TITLE}</title><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>${reportInner()}<script>window.addEventListener("load",()=>setTimeout(()=>print(),600))<\/script></body></html>`;
+  try{const name="รายงานสำรวจโต๊ะเก้าอี้-"+({overview:"ภาพรวม",building:"รายอาคาร",group:"รายกลุ่มสาระ"}[$("repType").value])+".html";const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([html],{type:"text/html;charset=utf-8"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);msg("repMsg","เปิดไฟล์ที่ดาวน์โหลด หน้าต่างพิมพ์จะขึ้นเอง เลือก “บันทึกเป็น PDF” ได้","ok");}
+  catch(e){msg("repMsg","ยังไม่ได้ดาวน์โหลดไฟล์");}
+});
+
+/* ---------- CSV ---------- */
+function csv(lines){return "\uFEFF"+lines.map(l=>l.map(v=>{const s=String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(",")).join("\r\n");}
+/* ---------- init ---------- */
+const API_OK=/^https:\/\/script\.google(usercontent)?\.com\//.test(API_URL);
+function applyReadOnly(){$("roNotice").hidden=API_OK;}
+async function api(action,payload,admin){
+  const body=JSON.stringify({action,...payload,...(admin?{password:adminPw}:{})});
+  const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body});
+  const j=await r.json(); if(!j.ok) throw new Error(j.error||"error"); return j;
+}
+let loading=false,lastLoad=0;
+async function load(){
+  if(!API_OK||loading) return; loading=true; $("syncInfo").textContent="กำลังโหลดข้อมูล…";
+  try{
+    const r=await fetch(API_URL+"?action=list&t="+Date.now()); const j=await r.json(); if(!j.ok) throw new Error(j.error);
+    rows=j.rooms.map(d=>normalizeRow(d,d.id)); lastLoad=Date.now(); renderAll();
+    $("syncInfo").textContent="อัปเดตล่าสุด "+new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})+" น.";
+  }catch(e){$("syncInfo").textContent="โหลดข้อมูลไม่สำเร็จ กดรีเฟรชอีกครั้ง"; if(!rows.length) $("dashBody").innerHTML=`<div class="panel empty">โหลดข้อมูลไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วกด “รีเฟรชข้อมูล”</div>`;}
+  loading=false;
+}
+$("btnRefresh").addEventListener("click",load);
+setInterval(()=>{if(document.visibilityState==="visible") load();},60000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&Date.now()-lastLoad>60000) load();});
+
+/* ---------- admin ---------- */
+const dlg=$("dlgAdmin");
+$("btnAdmin").addEventListener("click",()=>{$("adminPw").value="";msg("adminMsg","");dlg.showModal();$("adminPw").focus();});
+$("adminCancel").addEventListener("click",()=>dlg.close());
+async function login(pw,silent){
+  try{const j=await api("login",{password:pw}); adminPw=pw; sheetUrl=j.sheetUrl||""; canAdmin=true;
+    try{sessionStorage.setItem("desk-admin",pw);}catch(e){} applyRole(); return true;}
+  catch(e){ if(!silent) msg("adminMsg",e.message==="รหัสผ่านไม่ถูกต้อง"?"รหัสผ่านไม่ถูกต้อง":"เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง","err"); return false;}
+}
+$("adminForm").addEventListener("submit",async e=>{
+  e.preventDefault(); if(!API_OK) return msg("adminMsg","ยังไม่ได้เชื่อมต่อ Google Sheet","err");
+  $("adminGo").disabled=true; msg("adminMsg","กำลังตรวจสอบ…");
+  if(await login($("adminPw").value)) dlg.close();
+  $("adminGo").disabled=false;
+});
+$("btnLogout").addEventListener("click",()=>{adminPw="";sheetUrl="";canAdmin=false;try{sessionStorage.removeItem("desk-admin");}catch(e){}applyRole();});
+
+/* ---------- theme ---------- */
+let theme="auto"; try{theme=localStorage.getItem("desk-survey-theme")||"auto";}catch(e){}
+function applyTheme(){
+  if(theme==="auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme=theme;
+  document.querySelectorAll("[data-theme-opt]").forEach(b=>b.setAttribute("aria-checked",String(b.dataset.themeOpt===theme)));
+}
+document.querySelectorAll("[data-theme-opt]").forEach(b=>b.addEventListener("click",()=>{
+  theme=b.dataset.themeOpt; try{localStorage.setItem("desk-survey-theme",theme);}catch(e){}
+  applyTheme();
+}));
+applyTheme();
+
+setStep(1); renderSteppers(); applyReadOnly(); applyRole(); renderAll();
+if(!API_OK){$("dashBody").innerHTML=`<div class="panel empty">ยังไม่ได้เชื่อมต่อ Google Sheet</div>`;}
+else{ load(); try{const pw=sessionStorage.getItem("desk-admin"); if(pw) login(pw,true);}catch(e){} }
+</script>
+</body>
+</html>
